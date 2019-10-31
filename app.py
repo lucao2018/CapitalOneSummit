@@ -9,12 +9,50 @@ import dash_bootstrap_components as dbc
 import dash_table
 import dash
 from JeopardyGame import JeopardyGame
+from flask_sqlalchemy import SQLAlchemy
 
-# external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-#
-# app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+server = app.server
 app.config.suppress_callback_exceptions = True
+
+server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(server)
+
+class JeopardyTable(db.Model):
+    __tablename__ = 'jeopardy'
+    category = db.Column(db.String)
+    category_id = db.Column(db.Integer, primary_key=True)
+
+    def __init__(self, category, category_id):
+        self.category = category
+        self.category_id = category_id
+
+def make_category_call(offset):
+    parameters = {
+        "count": 100,
+        "offset": offset
+    }
+    response = requests.get("http://jservice.io/api/categories/", params=parameters)
+    return response.json()
+
+def populateDatabase():
+    offset = 0
+    while True:
+        response = make_category_call(offset)
+        if (len(response) == 0):
+            break
+        for item in response:
+            category_id = item['id']
+            category_title = item['title']
+            if (category_id is not None and category_title is not None):
+                if db.session.query(JeopardyTable).filter(JeopardyTable.category_id == category_id).count()==0:
+                    data = JeopardyTable(category_title, category_id)
+                    db.session.add(data)
+                    db.session.commit()
+                    print("added")
+        offset += 100
+# populateDatabase()
 
 app.layout = html.Div([
     dcc.Tabs(id="tabs", children=[
@@ -51,17 +89,28 @@ app.layout = html.Div([
                     dcc.Input(
                         id='max-date',
                         type='text',
-                    )
+                    ),
+                    html.H6(children="How many clues would you like be returned (will be rounded to nearest 100th)"),
+                    dcc.Input(
+                        id='num-clues',
+                        type='text',
+                    ),
                 ]),
 
             ]),
             html.Button(id='submit-button', n_clicks=0, children='Submit'),
+
             html.Div(
                 dash_table.DataTable(
                     id='datatable',
-                    style_table={'overflowX': 'scroll'},
+                    style_header={
+                        'backgroundColor': 'white',
+                        'fontWeight': 'bold'
+                    },
+                    page_size = 20,
                     style_cell={
-                        'whiteSpace': 'normal'
+                        'whiteSpace': 'normal',
+                        'minWidth': '0px', 'maxWidth': '180px',
                     },
 
                     columns=[{"name": "Question Value", "id": "value"},
@@ -71,20 +120,14 @@ app.layout = html.Div([
                              {"name": "Category ID", "id": "category_id"},
                              {"name": "Air Date", "id": "airdate"}],
                     data=[],
-                    css=[{
-                        'selector': '.dash-cell div.dash-cell-value',
-                        'rule': 'display: inline; white-space: inherit; overflow: inherit; text-overflow: inherit;'
-                    }],
-                    editable=True,
                     sort_action="custom",
                     sort_mode="multi",
                     sort_by=[],
                     row_selectable="multi",
                     row_deletable=True,
                     selected_rows=[],
-                    page_action="custom",
+                    page_action='native',
                     page_current=0,
-                    page_size=15,
                 ),
             ),
             html.Div(id='intermediate-value', style={'display': 'none'}),
@@ -95,11 +138,11 @@ app.layout = html.Div([
             html.Div(
                 dash_table.DataTable(
                     id='datatable2',
-                    style_table={'overflowX': 'scroll'},
                     style_cell={
-                        'whiteSpace': 'normal'
+                        'whiteSpace': 'normal',
+                        'height': 'auto',
+                        'minWidth': '0px', 'maxWidth': '180px'
                     },
-
                     columns=[{"name": "Question Value", "id": "value"},
                              {"name": "Question", "id": "question"},
                              {"name": "Answer", "id": "answer"},
@@ -118,19 +161,19 @@ app.layout = html.Div([
                     row_selectable="multi",
                     row_deletable=True,
                     selected_rows=[],
-                    page_action="custom",
+                    page_action="native",
                     page_current=0,
-                    page_size=15,
                 ),
             ),
         ]),
+
         dcc.Tab(label="Play Jeopardy!", children=[
             dbc.Button("Click To Start A New Game", color="primary", id='play-button'),
             html.Div(id='table-div', children=[
 
             ]),
             html.Div(id="score", children=200),
-            html.Div(id='answers', style={'display': 'none'})
+            html.Div(id='answers', style={'display': 'none'}),
         ])
     ])
 ])
@@ -145,35 +188,66 @@ def parse_date(date_string):
     return datetime_obj
 
 
-def make_api_call(clue_value, category_value, min_date, max_date):
+def make_api_call(clue_value, category_value, min_date, max_date, offset):
     parameters = {
         "value": clue_value,
         "category_value": category_value,
         "min_date": parse_date(min_date),
-        "max_date": parse_date(max_date)
+        "max_date": parse_date(max_date),
+        "offset": offset
     }
     response = requests.get("http://jservice.io/api/clues/", params=parameters)
     return response.json()
 
+def extractID(idString):
+    result = ""
+    for letter in idString:
+        if letter.isdigit():
+            result+=letter
+    return result
 
 @app.callback([Output('datatable', 'data'), Output('datatable', 'selected_rows')],
               [Input('submit-button', 'n_clicks')],
               [State('clue-value', 'value'),
                State('category-value', 'value'),
                State('min-date', 'value'),
-               State('max-date', 'value')])
-def generate_table(n_clicks, input1, input2, input3, input4):
-    if input1 != None or input2 != None or input3 != None or input4 != None:
-        jsonResponse = make_api_call(input1, input2, input3, input4)
-        data = pd.DataFrame.from_dict(jsonResponse)
+               State('max-date', 'value'),
+               State('num-clues', 'value')])
+def generate_table(n_clicks, input1, input2, input3, input4, input5):
+    list_of_matching_ids = []
+    if input2 is not None:
+        listOfMatches = JeopardyTable.query.filter(JeopardyTable.category.contains(input2)).all()
+        print(listOfMatches)
+        for category in listOfMatches:
+            print(category.category_id)
+        print(list_of_matching_ids)
+
+    if input1 is not None or input2 is not None or input3 is not None or input4 is not None:
+
+        offset = 0
+        finalData = make_api_call(input1, input2, input3, input4, offset)
+
+        if input5 is not None:
+            num_clues = int(input5)
+            while True:
+                offset += 100
+                if (num_clues > len(finalData)):
+                    jsonResponse = make_api_call(input1, input2, input3, input4, offset)
+                    print(jsonResponse)
+                    finalData += jsonResponse
+                else:
+                    break
+
+        data = pd.DataFrame.from_dict(finalData)
         categoryNames = []
+
         for item in data['category']:
             categoryNames.append(item['title'])
         data['Category Names'] = categoryNames
+
         return data.to_dict(orient='records'), []
     else:
         raise PreventUpdate
-
 
 @app.callback(Output('datatable2', 'data'),
               [Input('submit-button2', 'n_clicks')],
@@ -187,11 +261,10 @@ def printData(n_clicks, input1, input2, input3):
             favorites_list.append(input3[selected_row])
     return favorites_list
 
-
 @app.callback([
     Output('table-div', 'children'),
-    Output('answers', 'children')
-], [Input('play-button', 'n_clicks')])
+    Output('answers', 'children')],
+    [Input('play-button', 'n_clicks')])
 def startJeopardy(n_clicks):
     if n_clicks == None:
         raise PreventUpdate
@@ -220,7 +293,9 @@ def startJeopardy(n_clicks):
         ]
 
         row_list = []
+
         clue_value = 0
+
         for i in range(0, 25):
             if i % 5 == 0:
                 clue_value += 200
@@ -238,7 +313,7 @@ def startJeopardy(n_clicks):
                         [
                             dbc.PopoverHeader(questions[i]),
                             dbc.Input(
-                                id='input' + str(i)
+                                id='answer' + str(i)
                             ),
 
                             dbc.Button(id='check-question-button' + str(i), style={
@@ -250,6 +325,7 @@ def startJeopardy(n_clicks):
                         id=("popover" + str(i)),
                         is_open=False,
                         target=("popover-target" + str(i)),
+                        hide_arrow=True
                     ),
                 ]
                 )))
@@ -275,25 +351,236 @@ def startJeopardy(n_clicks):
         table = dbc.Table(table_header + table_body, bordered=True, style={
             'background-color': '#060CE9'
         })
+
         return table, answers
 
-
 @app.callback(
-    Output("score", "children"),
-    [Input("check-question-button0", "n_clicks")],
-    [State('score', 'children'),
-     State('input0', 'value'),
-     State('answers', 'children')],
-)
-def checkQuestion1(n, currentScore, candidateAnswer, actualAnswers):
-    if candidateAnswer == None:
-        raise PreventUpdate
-    else:
-        if candidateAnswer == actualAnswers[0]:
+    [Output('popover-target0', 'style'), Output('popover-target1', 'style')],
+    [Input("check-question-button0", "n_clicks"),
+     Input("check-question-button1", "n_clicks"),
+     Input("check-question-button2", "n_clicks"),
+     Input("check-question-button3", "n_clicks"),
+     Input("check-question-button4", "n_clicks"),
+     Input("check-question-button5", "n_clicks"),
+     Input("check-question-button6", "n_clicks"),
+     Input("check-question-button7", "n_clicks"),
+     Input("check-question-button8", "n_clicks"),
+     Input("check-question-button9", "n_clicks"),
+     Input("check-question-button10", "n_clicks"),
+     Input("check-question-button11", "n_clicks"),
+     Input("check-question-button12", "n_clicks"),
+     Input("check-question-button13", "n_clicks"),
+     Input("check-question-button14", "n_clicks"),
+     Input("check-question-button15", "n_clicks"),
+     Input("check-question-button16", "n_clicks"),
+     Input("check-question-button17", "n_clicks"),
+     Input("check-question-button18", "n_clicks"),
+     Input("check-question-button19", "n_clicks"),
+     Input("check-question-button20", "n_clicks"),
+     Input("check-question-button21", "n_clicks"),
+     Input("check-question-button22", "n_clicks"),
+     Input("check-question-button23", "n_clicks"),
+     Input("check-question-button24", "n_clicks")],
+    [State('answer0', 'value'),
+     State('answer1', 'value'),
+     State('answer2', 'value'),
+     State('answer3', 'value'),
+     State('answer4', 'value'),
+     State('answer5', 'value'),
+     State('answer6', 'value'),
+     State('answer7', 'value'),
+     State('answer8', 'value'),
+     State('answer9', 'value'),
+     State('answer10', 'value'),
+     State('answer11', 'value'),
+     State('answer12', 'value'),
+     State('answer13', 'value'),
+     State('answer14', 'value'),
+     State('answer15', 'value'),
+     State('answer16', 'value'),
+     State('answer17', 'value'),
+     State('answer18', 'value'),
+     State('answer19', 'value'),
+     State('answer20', 'value'),
+     State('answer21', 'value'),
+     State('answer22', 'value'),
+     State('answer23', 'value'),
+     State('answer24', 'value'),
+     State('score', 'children'),
+     State('answers', 'children')])
+def checkAnswer(n_clicks0, n_clicks1, n_clicks2, n_clicks3, n_clicks4, n_clicks5, n_clicks6, n_clicks7, n_clicks8,
+                n_clicks9,
+                n_clicks10, n_clicks11, n_clicks12, n_clicks13, n_clicks14, n_clicks15, n_clicks16, n_clicks17,
+                n_clicks18, n_clicks19,
+                n_clicks20, n_clicks21, n_clicks22, n_clicks23, n_clicks24, answer0, answer1, answer2,
+                answer3, answer4, answer5, answer6, answer7, answer8, answer9, answer10, answer11, answer12, answer13
+                , answer14, answer15, answer16, answer17, answer18, answer19, answer20, answer21, answer22, answer23,
+                answer24, currentScore, answers):
+    ctx = dash.callback_context
+    print(ctx.states)
+    buttonNum = ctx.triggered[0]['prop_id'].split('.')[0]
+    print(buttonNum)
+    if buttonNum == "check-question-button0":
+        if answer0 == answers[0]:
             currentScore += 200
         else:
             currentScore -= 200
-    return currentScore
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    elif buttonNum == 'check-question-button1':
+        if answer1 == answers[1]:
+            currentScore += 200
+        else:
+            currentScore -= 200
+    return [{'display': 'none'}, {'display': 'none'}]
 
 
 @app.callback(
