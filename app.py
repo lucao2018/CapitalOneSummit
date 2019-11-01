@@ -14,7 +14,7 @@ from flask_sqlalchemy import SQLAlchemy
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
 app.config.suppress_callback_exceptions = True
-
+server.config['SQLALCHEMY_DATABASE_URI'] = 'postgres://flaehrpkwiurco:ad15ed7406fa968214c230eca578ba83793420015f135cb9b34409da1b3e51c6@ec2-54-235-180-123.compute-1.amazonaws.com:5432/d5ovqc3h4eto64'
 server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(server)
@@ -46,12 +46,14 @@ def populateDatabase():
             category_id = item['id']
             category_title = item['title']
             if (category_id is not None and category_title is not None):
-                if db.session.query(JeopardyTable).filter(JeopardyTable.category_id == category_id).count()==0:
+                if db.session.query(JeopardyTable).filter(JeopardyTable.category_id == category_id).count() == 0:
                     data = JeopardyTable(category_title, category_id)
                     db.session.add(data)
                     db.session.commit()
                     print("added")
         offset += 100
+
+
 # populateDatabase()
 
 app.layout = html.Div([
@@ -75,8 +77,7 @@ app.layout = html.Div([
                         id='clue-value',
                         type='text',
                     ),
-                    html.H6(children="Type in the category id of the clue that you want to search for: "),
-                    html.Br(),
+                    html.H6(children="Search for a category by key word/phrase"),
                     dcc.Input(
                         id='category-value',
                         type='text',
@@ -90,7 +91,7 @@ app.layout = html.Div([
                         id='max-date',
                         type='text',
                     ),
-                    html.H6(children="How many clues would you like be returned (will be rounded to nearest 100th)"),
+                    html.H6(children="How many clues would you like be returned (approximate)"),
                     dcc.Input(
                         id='num-clues',
                         type='text',
@@ -107,7 +108,7 @@ app.layout = html.Div([
                         'backgroundColor': 'white',
                         'fontWeight': 'bold'
                     },
-                    page_size = 20,
+                    page_size=20,
                     style_cell={
                         'whiteSpace': 'normal',
                         'minWidth': '0px', 'maxWidth': '180px',
@@ -174,6 +175,9 @@ app.layout = html.Div([
             ]),
             html.Div(id="score", children=200),
             html.Div(id='answers', style={'display': 'none'}),
+            html.Div(id='used-buttons', style={'display': 'none'}, children=[
+
+            ]),
         ])
     ])
 ])
@@ -191,7 +195,7 @@ def parse_date(date_string):
 def make_api_call(clue_value, category_value, min_date, max_date, offset):
     parameters = {
         "value": clue_value,
-        "category_value": category_value,
+        "category": category_value,
         "min_date": parse_date(min_date),
         "max_date": parse_date(max_date),
         "offset": offset
@@ -199,12 +203,6 @@ def make_api_call(clue_value, category_value, min_date, max_date, offset):
     response = requests.get("http://jservice.io/api/clues/", params=parameters)
     return response.json()
 
-def extractID(idString):
-    result = ""
-    for letter in idString:
-        if letter.isdigit():
-            result+=letter
-    return result
 
 @app.callback([Output('datatable', 'data'), Output('datatable', 'selected_rows')],
               [Input('submit-button', 'n_clicks')],
@@ -215,14 +213,29 @@ def extractID(idString):
                State('num-clues', 'value')])
 def generate_table(n_clicks, input1, input2, input3, input4, input5):
     list_of_matching_ids = []
+    table_data = []
+
     if input2 is not None:
         listOfMatches = JeopardyTable.query.filter(JeopardyTable.category.contains(input2)).all()
-        print(listOfMatches)
         for category in listOfMatches:
-            print(category.category_id)
-        print(list_of_matching_ids)
+            list_of_matching_ids.append(category.category_id)
+        for id in list_of_matching_ids:
+            if input5 is not None:
+                if (len(table_data) >= int(input5)):
+                    break
+            jsonResponse = make_api_call(input1, id, input3, input4, 0)
+            table_data += jsonResponse
+        data = pd.DataFrame.from_dict(table_data)
 
-    if input1 is not None or input2 is not None or input3 is not None or input4 is not None:
+        categoryNames = []
+
+        for item in data['category']:
+            categoryNames.append(item['title'])
+        data['Category Names'] = categoryNames
+
+        return data.to_dict(orient='records'), []
+
+    elif input1 is not None or input3 is not None or input4 is not None:
 
         offset = 0
         finalData = make_api_call(input1, input2, input3, input4, offset)
@@ -237,7 +250,6 @@ def generate_table(n_clicks, input1, input2, input3, input4, input5):
                     finalData += jsonResponse
                 else:
                     break
-
         data = pd.DataFrame.from_dict(finalData)
         categoryNames = []
 
@@ -246,8 +258,10 @@ def generate_table(n_clicks, input1, input2, input3, input4, input5):
         data['Category Names'] = categoryNames
 
         return data.to_dict(orient='records'), []
+
     else:
         raise PreventUpdate
+
 
 @app.callback(Output('datatable2', 'data'),
               [Input('submit-button2', 'n_clicks')],
@@ -260,6 +274,7 @@ def printData(n_clicks, input1, input2, input3):
         if input3[selected_row] not in favorites_list:
             favorites_list.append(input3[selected_row])
     return favorites_list
+
 
 @app.callback([
     Output('table-div', 'children'),
@@ -355,7 +370,33 @@ def startJeopardy(n_clicks):
         return table, answers
 
 @app.callback(
-    [Output('popover-target0', 'style'), Output('popover-target1', 'style')],
+    [Output('popover0', 'style'), Output('popover-target0', 'style'),
+     Output('popover1', 'style'), Output('popover-target1', 'style'),
+     Output('popover2', 'style'), Output('popover-target2', 'style'),
+     Output('popover3', 'style'), Output('popover-target3', 'style'),
+     Output('popover4', 'style'), Output('popover-target4', 'style'),
+     Output('popover5', 'style'), Output('popover-target5', 'style'),
+     Output('popover6', 'style'), Output('popover-target6', 'style'),
+     Output('popover7', 'style'), Output('popover-target7', 'style'),
+     Output('popover8', 'style'), Output('popover-target8', 'style'),
+     Output('popover9', 'style'), Output('popover-target9', 'style'),
+     Output('popover10', 'style'), Output('popover-target10', 'style'),
+     Output('popover11', 'style'), Output('popover-target11', 'style'),
+     Output('popover12', 'style'), Output('popover-target12', 'style'),
+     Output('popover13', 'style'), Output('popover-target13', 'style'),
+     Output('popover14', 'style'), Output('popover-target14', 'style'),
+     Output('popover15', 'style'), Output('popover-target15', 'style'),
+     Output('popover16', 'style'), Output('popover-target16', 'style'),
+     Output('popover17', 'style'), Output('popover-target17', 'style'),
+     Output('popover18', 'style'), Output('popover-target18', 'style'),
+     Output('popover19', 'style'), Output('popover-target19', 'style'),
+     Output('popover20', 'style'), Output('popover-target20', 'style'),
+     Output('popover21', 'style'), Output('popover-target21', 'style'),
+     Output('popover22', 'style'), Output('popover-target22', 'style'),
+     Output('popover23', 'style'), Output('popover-target23', 'style'),
+     Output('popover24', 'style'), Output('popover-target24', 'style'),
+        Output('score', 'children'), Output('used-buttons', 'children')
+     ],
     [Input("check-question-button0", "n_clicks"),
      Input("check-question-button1", "n_clicks"),
      Input("check-question-button2", "n_clicks"),
@@ -407,7 +448,8 @@ def startJeopardy(n_clicks):
      State('answer23', 'value'),
      State('answer24', 'value'),
      State('score', 'children'),
-     State('answers', 'children')])
+     State('answers', 'children'),
+     State('used-buttons', 'children')])
 def checkAnswer(n_clicks0, n_clicks1, n_clicks2, n_clicks3, n_clicks4, n_clicks5, n_clicks6, n_clicks7, n_clicks8,
                 n_clicks9,
                 n_clicks10, n_clicks11, n_clicks12, n_clicks13, n_clicks14, n_clicks15, n_clicks16, n_clicks17,
@@ -415,173 +457,115 @@ def checkAnswer(n_clicks0, n_clicks1, n_clicks2, n_clicks3, n_clicks4, n_clicks5
                 n_clicks20, n_clicks21, n_clicks22, n_clicks23, n_clicks24, answer0, answer1, answer2,
                 answer3, answer4, answer5, answer6, answer7, answer8, answer9, answer10, answer11, answer12, answer13
                 , answer14, answer15, answer16, answer17, answer18, answer19, answer20, answer21, answer22, answer23,
-                answer24, currentScore, answers):
+                answer24, currentScore, answers, usedButtons):
+
     ctx = dash.callback_context
     print(ctx.states)
     buttonNum = ctx.triggered[0]['prop_id'].split('.')[0]
-    print(buttonNum)
-    if buttonNum == "check-question-button0":
-        if answer0 == answers[0]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    elif buttonNum == 'check-question-button1':
-        if answer1 == answers[1]:
-            currentScore += 200
-        else:
-            currentScore -= 200
-    return [{'display': 'none'}, {'display': 'none'}]
+    buttonNum = extract_num(buttonNum)
+    if buttonNum == 0:
+        currentScore = update_score(answer0, buttonNum, answers, currentScore)
+    elif buttonNum == 1:
+        currentScore = update_score(answer1, buttonNum, answers, currentScore)
+    elif buttonNum == 2:
+        currentScore = update_score(answer2, buttonNum, answers, currentScore)
+    elif buttonNum == 3:
+        currentScore = update_score(answer3, buttonNum, answers, currentScore)
+    elif buttonNum == 4:
+        currentScore = update_score(answer4, buttonNum, answers, currentScore)
+    elif buttonNum == 5:
+        currentScore = update_score(answer5, buttonNum, answers, currentScore)
+    elif buttonNum == 6:
+        currentScore = update_score(answer6, buttonNum, answers, currentScore)
+    elif buttonNum == 7:
+        currentScore = update_score(answer7, buttonNum, answers, currentScore)
+    elif buttonNum == 8:
+        currentScore  = update_score(answer8, buttonNum, answers, currentScore)
+    elif buttonNum == 9:
+        currentScore = update_score(answer9, buttonNum, answers, currentScore)
+    elif buttonNum == 10:
+        currentScore = update_score(answer10, buttonNum, answers, currentScore)
+    elif buttonNum == 11:
+        currentScore = update_score(answer11, buttonNum, answers, currentScore)
+    elif buttonNum == 12:
+        currentScore = update_score(answer12, buttonNum, answers, currentScore)
+    elif buttonNum == 13:
+        currentScore = update_score(answer13, buttonNum, answers, currentScore)
+    elif buttonNum == 14:
+        currentScore = update_score(answer14, buttonNum, answers, currentScore)
+    elif buttonNum == 15:
+        currentScore = update_score(answer15, buttonNum, answers, currentScore)
+    elif buttonNum == 16:
+        currentScore = update_score(answer16, buttonNum, answers, currentScore)
+    elif buttonNum == 17:
+        currentScore = update_score(answer17, buttonNum, answers, currentScore)
+    elif buttonNum == 18:
+        currentScore = update_score(answer18, buttonNum, answers, currentScore)
+    elif buttonNum == 19:
+        currentScore = update_score(answer19, buttonNum, answers, currentScore)
+    elif buttonNum == 20:
+        currentScore = update_score(answer20, buttonNum, answers, currentScore)
+    elif buttonNum == 21:
+        currentScore = update_score(answer21, buttonNum, answers, currentScore)
+    elif buttonNum == 22:
+        currentScore = update_score(answer22, buttonNum, answers, currentScore)
+    elif buttonNum == 23:
+        currentScore = update_score(answer23, buttonNum, answers, currentScore)
+    elif buttonNum == 24:
+        currentScore = update_score(answer24, buttonNum, answers, currentScore)
+    usedButtons.append(buttonNum)
 
+    outputList = []
+
+    for i in range(0,25):
+        if i not in usedButtons:
+            outputList.append({'display': 'inline'})
+            outputList.append({
+                            'textAlign': 'center',
+                            'color': '#FFCC00',
+                            'font-weight': 'bold',
+                            'font-size': '16px'
+                        })
+        else:
+            outputList.append({'display': 'none'})
+            outputList.append({'display': 'none'})
+
+    outputList.append(currentScore)
+    outputList.append(usedButtons)
+
+    return outputList
+
+def extract_num(buttonNum):
+    output = ""
+    for i in range(len(buttonNum)):
+        if buttonNum[i].isdigit():
+            output+=buttonNum[i]
+    return int(output)
+
+def update_score(answer, buttonNum, answers, currentScore):
+    if answer == answers[buttonNum]:
+        if (buttonNum <= 4):
+            currentScore+=200
+        elif buttonNum<=9:
+            currentScore+=400
+        elif buttonNum<=14:
+            currentScore+=600
+        elif buttonNum<=19:
+            currentScore+=800
+        elif buttonNum<=24:
+            currentScore+=1000
+    else:
+        if (buttonNum <= 4):
+            currentScore-=200
+        elif buttonNum<=9:
+            currentScore-=400
+        elif buttonNum<=14:
+            currentScore-=600
+        elif buttonNum<=19:
+            currentScore-=800
+        elif buttonNum<=24:
+            currentScore-=1000
+    return currentScore
 
 @app.callback(
     Output("popover0", "is_open"),
