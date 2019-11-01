@@ -16,7 +16,6 @@ server = app.server
 app.config.suppress_callback_exceptions = True
 server.config['SQLALCHEMY_DATABASE_URI'] = 'postgres://flaehrpkwiurco:ad15ed7406fa968214c230eca578ba83793420015f135cb9b34409da1b3e51c6@ec2-54-235-180-123.compute-1.amazonaws.com:5432/d5ovqc3h4eto64'
 server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 db = SQLAlchemy(server)
 
 class JeopardyTable(db.Model):
@@ -57,25 +56,30 @@ def populateDatabase():
 # populateDatabase()
 
 app.layout = html.Div([
-    dcc.Tabs(id="tabs", children=[
 
+    dcc.Tabs(id="tabs", children=[
         dcc.Tab(label='Search for Jeopardy Questions', children=[
 
             html.Br(),
 
-            html.H2(children="Welcome to Jeopardy Trivia Lookup", style={
+            html.H2(children="Jeopardy Trivia Search Engine", style={
                 'textAlign': 'center',
             }),
 
             html.Br(),
             html.Br(),
+
             html.Div([
                 html.H5(children="Fill in criteria that is relevant to your search and then click submit: "),
                 html.Div([
-                    html.H6(children="Type in the value of the clue in dollars (omit the dollar sign): "),
+                    html.H6(children="Type in the value of the clue in dollars without the dollar sign (optional): "),
                     dcc.Input(
                         id='clue-value',
                         type='text',
+                        # bs_size='sm',
+                        style = {
+                            'margin-left': '1em'
+                        }
                     ),
                     html.H6(children="Search for a category by key word/phrase"),
                     dcc.Input(
@@ -340,7 +344,7 @@ def startJeopardy(n_clicks):
                         id=("popover" + str(i)),
                         is_open=False,
                         target=("popover-target" + str(i)),
-                        hide_arrow=True
+                        hide_arrow=True,
                     ),
                 ]
                 )))
