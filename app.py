@@ -471,7 +471,7 @@ def startJeopardy(n_clicks):
 
                             ),
                         ],
-                        id="modal" + str(i), backdrop=True),
+                        id="modal" + str(i), backdrop=False),
                 ])))
 
         row1 = html.Tr(row_list[0:5], style={
