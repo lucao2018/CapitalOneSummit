@@ -296,9 +296,6 @@ app.layout = html.Div([
             html.Div(children=[
 
             ]),
-            # dbc.Button(
-            #     ["Score", dbc.Badge(0, color="light", className="ml-1")],
-            #     color="primary"),
             html.Div(id='answers', style={'display': 'none'}),
             html.Div(id='used-buttons', style={'display': 'none'}, children=[
 
@@ -457,34 +454,25 @@ def startJeopardy(n_clicks):
                 clue_value += 200
             row_list.append(
                 html.Td(html.Div([
-                    html.A(
-                        [html.Span(html.U('$' + str(clue_value)), id=("popover-target" + str(i)), style={
-                            'textAlign': 'center',
+                    html.A([
+                        dbc.Button(html.U('$' + str(clue_value), style={
                             'color': '#FFCC00',
-                            'font-weight': 'bold',
-                            'font-size': '16px'
-                        })]
-                    ),
-                    dbc.Popover(
+                            'font-weight': 'bold'
+                        }), color="link", id="modal-button" + str(i))
+                    ]),
+                    dbc.Modal(
                         [
-                            dbc.PopoverHeader(questions[i]),
-                            dbc.Input(
-                                id='answer' + str(i)
-                            ),
+                            dbc.ModalHeader(questions[i]),
+                            dbc.ModalBody("What is/are ...."),
+                            dbc.ModalFooter([
+                                dbc.Input(id='answer' + str(i)),
+                                dbc.Button("Submit", id="check-question-button" + str(i), className="ml-auto"+str(i)),
+                            ]
 
-                            dbc.Button(id='check-question-button' + str(i), style={
-                                "color": "blue"
-                            }, children=html.Span("Submit Your Answer", style={
-                                "color": "#FFCC00"
-                            }))
+                            ),
                         ],
-                        id=("popover" + str(i)),
-                        is_open=False,
-                        target=("popover-target" + str(i)),
-                        hide_arrow=True,
-                    ),
-                ]
-                )))
+                        id="modal" + str(i), backdrop=True),
+                ])))
 
         row1 = html.Tr(row_list[0:5], style={
             'text-align': 'center'
@@ -519,37 +507,37 @@ def startJeopardy(n_clicks):
                 'display': 'flex',
                 'justify-content': 'center'
             }), {'display': 'flex',
-                'justify-content': 'center',
-                'align-items': 'center',
-                'padding-top': '15px'}
+                 'justify-content': 'center',
+                 'align-items': 'center',
+                 'padding-top': '15px'}
 
 
 @app.callback(
-    [Output('popover0', 'style'), Output('popover-target0', 'style'),
-     Output('popover1', 'style'), Output('popover-target1', 'style'),
-     Output('popover2', 'style'), Output('popover-target2', 'style'),
-     Output('popover3', 'style'), Output('popover-target3', 'style'),
-     Output('popover4', 'style'), Output('popover-target4', 'style'),
-     Output('popover5', 'style'), Output('popover-target5', 'style'),
-     Output('popover6', 'style'), Output('popover-target6', 'style'),
-     Output('popover7', 'style'), Output('popover-target7', 'style'),
-     Output('popover8', 'style'), Output('popover-target8', 'style'),
-     Output('popover9', 'style'), Output('popover-target9', 'style'),
-     Output('popover10', 'style'), Output('popover-target10', 'style'),
-     Output('popover11', 'style'), Output('popover-target11', 'style'),
-     Output('popover12', 'style'), Output('popover-target12', 'style'),
-     Output('popover13', 'style'), Output('popover-target13', 'style'),
-     Output('popover14', 'style'), Output('popover-target14', 'style'),
-     Output('popover15', 'style'), Output('popover-target15', 'style'),
-     Output('popover16', 'style'), Output('popover-target16', 'style'),
-     Output('popover17', 'style'), Output('popover-target17', 'style'),
-     Output('popover18', 'style'), Output('popover-target18', 'style'),
-     Output('popover19', 'style'), Output('popover-target19', 'style'),
-     Output('popover20', 'style'), Output('popover-target20', 'style'),
-     Output('popover21', 'style'), Output('popover-target21', 'style'),
-     Output('popover22', 'style'), Output('popover-target22', 'style'),
-     Output('popover23', 'style'), Output('popover-target23', 'style'),
-     Output('popover24', 'style'), Output('popover-target24', 'style'),
+    [Output('modal0', 'style'), Output('modal-button0', 'style'),
+     Output('modal1', 'style'), Output('modal-button1', 'style'),
+     Output('modal2', 'style'), Output('modal-button2', 'style'),
+     Output('modal3', 'style'), Output('modal-button3', 'style'),
+     Output('modal4', 'style'), Output('modal-button4', 'style'),
+     Output('modal5', 'style'), Output('modal-button5', 'style'),
+     Output('modal6', 'style'), Output('modal-button6', 'style'),
+     Output('modal7', 'style'), Output('modal-button7', 'style'),
+     Output('modal8', 'style'), Output('modal-button8', 'style'),
+     Output('modal9', 'style'), Output('modal-button9', 'style'),
+     Output('modal10', 'style'), Output('modal-button10', 'style'),
+     Output('modal11', 'style'), Output('modal-button11', 'style'),
+     Output('modal12', 'style'), Output('modal-button12', 'style'),
+     Output('modal13', 'style'), Output('modal-button13', 'style'),
+     Output('modal14', 'style'), Output('modal-button14', 'style'),
+     Output('modal15', 'style'), Output('modal-button15', 'style'),
+     Output('modal16', 'style'), Output('modal-button16', 'style'),
+     Output('modal17', 'style'), Output('modal-button17', 'style'),
+     Output('modal18', 'style'), Output('modal-button18', 'style'),
+     Output('modal19', 'style'), Output('modal-button19', 'style'),
+     Output('modal20', 'style'), Output('modal-button20', 'style'),
+     Output('modal21', 'style'), Output('modal-button21', 'style'),
+     Output('modal22', 'style'), Output('modal-button22', 'style'),
+     Output('modal23', 'style'), Output('modal-button23', 'style'),
+     Output('modal24', 'style'), Output('modal-button24', 'style'),
      Output('score-button', 'children'), Output('used-buttons', 'children')
      ],
     [Input("check-question-button0", "n_clicks"),
@@ -672,12 +660,10 @@ def checkAnswer(n_clicks0, n_clicks1, n_clicks2, n_clicks3, n_clicks4, n_clicks5
 
     for i in range(0, 25):
         if i not in usedButtons:
-            outputList.append({'display': 'inline'})
+            outputList.append({})
             outputList.append({
-                'textAlign': 'center',
                 'color': '#FFCC00',
-                'font-weight': 'bold',
-                'font-size': '16px'
+                'font-weight': 'bold'
             })
         else:
             outputList.append({'display': 'none'})
@@ -724,275 +710,275 @@ def update_score(answer, buttonNum, answers, currentScore):
 
 
 @app.callback(
-    Output("popover0", "is_open"),
-    [Input("popover-target0", "n_clicks")],
-    [State("popover0", "is_open")],
+    Output("modal0", "is_open"),
+    [Input("modal-button0", "n_clicks")],
+    [State("modal0", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover1", "is_open"),
-    [Input("popover-target1", "n_clicks")],
-    [State("popover1", "is_open")],
+    Output("modal1", "is_open"),
+    [Input("modal-button1", "n_clicks")],
+    [State("modal1", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover2", "is_open"),
-    [Input("popover-target2", "n_clicks")],
-    [State("popover2", "is_open")],
+    Output("modal2", "is_open"),
+    [Input("modal-button2", "n_clicks")],
+    [State("modal2", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover3", "is_open"),
-    [Input("popover-target3", "n_clicks")],
-    [State("popover3", "is_open")],
+    Output("modal3", "is_open"),
+    [Input("modal-button3", "n_clicks")],
+    [State("modal3", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover4", "is_open"),
-    [Input("popover-target4", "n_clicks")],
-    [State("popover4", "is_open")],
+    Output("modal4", "is_open"),
+    [Input("modal-button4", "n_clicks")],
+    [State("modal4", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover5", "is_open"),
-    [Input("popover-target5", "n_clicks")],
-    [State("popover5", "is_open")],
+    Output("modal5", "is_open"),
+    [Input("modal-button5", "n_clicks")],
+    [State("modal5", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover6", "is_open"),
-    [Input("popover-target6", "n_clicks")],
-    [State("popover6", "is_open")],
+    Output("modal6", "is_open"),
+    [Input("modal-button6", "n_clicks")],
+    [State("modal6", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover7", "is_open"),
-    [Input("popover-target7", "n_clicks")],
-    [State("popover7", "is_open")],
+    Output("modal7", "is_open"),
+    [Input("modal-button7", "n_clicks")],
+    [State("modal7", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover8", "is_open"),
-    [Input("popover-target8", "n_clicks")],
-    [State("popover8", "is_open")],
+    Output("modal8", "is_open"),
+    [Input("modal-button8", "n_clicks")],
+    [State("modal8", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover9", "is_open"),
-    [Input("popover-target9", "n_clicks")],
-    [State("popover9", "is_open")],
+    Output("modal9", "is_open"),
+    [Input("modal-button9", "n_clicks")],
+    [State("modal9", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover10", "is_open"),
-    [Input("popover-target10", "n_clicks")],
-    [State("popover10", "is_open")],
+    Output("modal10", "is_open"),
+    [Input("modal-button10", "n_clicks")],
+    [State("modal10", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover11", "is_open"),
-    [Input("popover-target11", "n_clicks")],
-    [State("popover11", "is_open")],
+    Output("modal11", "is_open"),
+    [Input("modal-button11", "n_clicks")],
+    [State("modal11", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover12", "is_open"),
-    [Input("popover-target12", "n_clicks")],
-    [State("popover12", "is_open")],
+    Output("modal12", "is_open"),
+    [Input("modal-button12", "n_clicks")],
+    [State("modal12", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover13", "is_open"),
-    [Input("popover-target13", "n_clicks")],
-    [State("popover13", "is_open")],
+    Output("modal13", "is_open"),
+    [Input("modal-button13", "n_clicks")],
+    [State("modal13", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover14", "is_open"),
-    [Input("popover-target14", "n_clicks")],
-    [State("popover14", "is_open")],
+    Output("modal14", "is_open"),
+    [Input("modal-button14", "n_clicks")],
+    [State("modal14", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover15", "is_open"),
-    [Input("popover-target15", "n_clicks")],
-    [State("popover15", "is_open")],
+    Output("modal15", "is_open"),
+    [Input("modal-button15", "n_clicks")],
+    [State("modal15", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover16", "is_open"),
-    [Input("popover-target16", "n_clicks")],
-    [State("popover16", "is_open")],
+    Output("modal16", "is_open"),
+    [Input("modal-button16", "n_clicks")],
+    [State("modal16", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover17", "is_open"),
-    [Input("popover-target17", "n_clicks")],
-    [State("popover17", "is_open")],
+    Output("modal17", "is_open"),
+    [Input("modal-button17", "n_clicks")],
+    [State("modal17", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover18", "is_open"),
-    [Input("popover-target18", "n_clicks")],
-    [State("popover18", "is_open")],
+    Output("modal18", "is_open"),
+    [Input("modal-button18", "n_clicks")],
+    [State("modal18", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover19", "is_open"),
-    [Input("popover-target19", "n_clicks")],
-    [State("popover19", "is_open")],
+    Output("modal19", "is_open"),
+    [Input("modal-button19", "n_clicks")],
+    [State("modal19", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover20", "is_open"),
-    [Input("popover-target20", "n_clicks")],
-    [State("popover20", "is_open")],
+    Output("modal20", "is_open"),
+    [Input("modal-button20", "n_clicks")],
+    [State("modal20", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover21", "is_open"),
-    [Input("popover-target21", "n_clicks")],
-    [State("popover21", "is_open")],
+    Output("modal21", "is_open"),
+    [Input("modal-button21", "n_clicks")],
+    [State("modal21", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover22", "is_open"),
-    [Input("popover-target22", "n_clicks")],
-    [State("popover22", "is_open")],
+    Output("modal22", "is_open"),
+    [Input("modal-button22", "n_clicks")],
+    [State("modal22", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover23", "is_open"),
-    [Input("popover-target23", "n_clicks")],
-    [State("popover23", "is_open")],
+    Output("modal23", "is_open"),
+    [Input("modal-button23", "n_clicks")],
+    [State("modal23", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
 
 
 @app.callback(
-    Output("popover24", "is_open"),
-    [Input("popover-target24", "n_clicks")],
-    [State("popover24", "is_open")],
+    Output("modal24", "is_open"),
+    [Input("modal-button24", "n_clicks")],
+    [State("modal24", "is_open")],
 )
-def toggle_popover(n, is_open):
+def toggle_modal(n, is_open):
     if n:
         return not is_open
     return is_open
