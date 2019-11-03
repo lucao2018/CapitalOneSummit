@@ -14,6 +14,8 @@ from flask_sqlalchemy import SQLAlchemy
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
 app.config.suppress_callback_exceptions = True
+
+# setup postgreSQL database with SQL Alchemy
 server.config['SQLALCHEMY_DATABASE_URI'] = 'postgres://flaehrpkwiurco:ad15ed7406fa968214c230eca578ba837934200' \
                                            '15f135cb9b34409da1b3e51c6@ec2-54-235-180-123.compute-1.amazonaws.com:' \
                                            '5432/d5ovqc3h4eto64'
@@ -22,6 +24,9 @@ db = SQLAlchemy(server)
 
 
 class JeopardyTable(db.Model):
+    """ Creates a mapped class for the postgreSQL database with two columns, category name and category id
+    """
+
     __tablename__ = 'jeopardy'
     category = db.Column(db.String)
     category_id = db.Column(db.Integer, primary_key=True)
@@ -30,46 +35,45 @@ class JeopardyTable(db.Model):
         self.category = category
         self.category_id = category_id
 
+    def make_category_call(self, offset):
+        """ Makes a call to /api/categories and returns the json of the response
 
-def make_category_call(offset):
-    """ Makes a call to /api/categories and returns the json of the response
+        Parameters:
+        offset (int): offset for call
 
-    Parameters:
-    offset (int): offset for call
+        Returns:
+        json: a json of the response returned from the api call
 
-    Returns:
-    int:a json of the response returned from the api call
+        """
+        parameters = {
+            "count": 100,
+            "offset": offset
+        }
+        response = requests.get("http://jservice.io/api/categories/", params=parameters)
+        return response.json()
 
-    """
-    parameters = {
-        "count": 100,
-        "offset": offset
-    }
-    response = requests.get("http://jservice.io/api/categories/", params=parameters)
-    return response.json()
+    def populate_database(self):
+        """ Function that is used to populate the PostgreSQL database with all available categories and their ids
 
+        """
+        offset = 0
 
-def populateDatabase():
-    """ Function that is used to populate the PostgreSQL database with all available categories and their ids
-
-    """
-    offset = 0
-
-    while True:
-        response = make_category_call(offset)
-        if len(response) == 0:
-            break
-        for item in response:
-            category_id = item['id']
-            category_title = item['title']
-            if category_id is not None and category_title is not None:
-                if db.session.query(JeopardyTable).filter(JeopardyTable.category_id == category_id).count() == 0:
-                    data = JeopardyTable(category_title, category_id)
-                    db.session.add(data)
-                    db.session.commit()
-        offset += 100
+        while True:
+            response = self.make_category_call(offset)
+            if len(response) == 0:
+                break
+            for item in response:
+                category_id = item['id']
+                category_title = item['title']
+                if category_id is not None and category_title is not None:
+                    if db.session.query(JeopardyTable).filter(JeopardyTable.category_id == category_id).count() == 0:
+                        data = JeopardyTable(category_title, category_id)
+                        db.session.add(data)
+                        db.session.commit()
+            offset += 100
 
 
+# Layout for web app
 app.layout = html.Div(children=[
     dcc.Tabs(id="tabs", children=[
         dcc.Tab(label='Search for Jeopardy Questions', children=[
@@ -272,7 +276,7 @@ app.layout = html.Div(children=[
             ]),
             html.Div(id='play-div', children=[
                 dbc.Button("Click To Start A New Game", id='play-button', color="primary"),
-            ],style={
+            ], style={
                 'display': 'flex',
                 'justify-content': 'center',
                 'align-items': 'center',
@@ -288,49 +292,6 @@ app.layout = html.Div(children=[
 ])
 
 
-def parse_date(date_string):
-    """ Returns a string converted to a date.
-
-    Parameters:
-        date_string (str):The string which is to be converted
-
-    Returns:
-        datetime_obj:The converted date
-
-    """
-    if date_string is None:
-        return None
-
-    format_str = '%m/%d/%Y'
-    datetime_obj = datetime.datetime.strptime(date_string, format_str)
-    return datetime_obj
-
-
-def make_api_call(clue_value, category_ID, min_date, max_date, offset):
-    """ Makes call to /api/clues and returns json of response.
-
-    Parameters:
-        clue_value (int):Value of clues to search for
-        category_value (int):Category of clues to search for
-        min_date (date):minimum date of clues to return
-        max_date(date):maximum date of clues to return
-        offset(int): offset of dates to return
-
-    Returns:
-        json of response
-
-    """
-    parameters = {
-        "value": clue_value,
-        "category": category_ID,
-        "min_date": parse_date(min_date),
-        "max_date": parse_date(max_date),
-        "offset": offset
-    }
-    response = requests.get("http://jservice.io/api/clues/", params=parameters)
-    return response.json()
-
-
 @app.callback([Output('datatable-div', 'children'), Output('favorites-button-div', 'children')],
               [Input('submit-button', 'n_clicks')],
               [State('clue-value', 'value'),
@@ -339,18 +300,19 @@ def make_api_call(clue_value, category_ID, min_date, max_date, offset):
                State('max-date', 'value'),
                State('num-clues', 'value')])
 def generate_table(n_clicks, clue_value, category_value, min_date, max_date, num_clues):
-    """ Returns a dash data table with clues that meet search criterion.
+    """ Returns a dash datatable with clues that meet search criterion.
 
     Parameters:
-        n_clicks (int):Number of times button has been clicked
-        category_value (int):Keyword/phrase to search for
-        min_date (date):minimum date of clues to return
-        max_date(date):maximum date of clues to return
+        n_clicks (int): Number of times button has been clicked
+        clue_value (int): Value of clue to search for in dollars
+        category_value (str): Keyword/phrase to search for
+        min_date (date): minimum date of clues to return
+        max_date(date): maximum date of clues to return
         num_clues(int): number of clues to return
 
     Returns:
-        dash data table populated with information of matching clues or a dash bootstrap component alert
-        warning that a required field was not filled out
+        dash datatable populated with information of matching clues or a dash bootstrap component alert
+        warning that a required field was not filled out/field was filled out incorrectly
 
     """
     list_of_matching_ids = []
@@ -368,6 +330,7 @@ def generate_table(n_clicks, clue_value, category_value, min_date, max_date, num
             # Make a query in PostgreSQL database with key word
             list_of_matches = JeopardyTable.query.filter(JeopardyTable.category.contains(category_value)).all()
 
+            # Case for no results found
             if len(list_of_matches) == 0:
                 return dbc.Alert("No results found", color="warning", dismissable=True), []
 
@@ -383,6 +346,7 @@ def generate_table(n_clicks, clue_value, category_value, min_date, max_date, num
                 if max_date == "":
                     max_date = None
 
+                # Validate user input for date format
                 try:
                     json_response = make_api_call(clue_value, id, min_date, max_date, 0)
                     table_data += json_response
@@ -464,12 +428,12 @@ def start_jeopardy(n_clicks):
     button/badge to keep track of the score
 
     Parameters:
-        n_clicks (int):Number of times play-button was clicked
+        n_clicks (int): Number of times play-button was clicked
 
     Returns:
-        dbc.Table:table that will represent the game board
-        list:list of answers to questions
-        html.Div:div that contains a button and badge to represent the player's score
+        dbc.Table: table that will represent the game board
+        list: list of answers to questions
+        html.Div: div that contains a button and badge to represent the player's score
 
     """
 
@@ -479,10 +443,6 @@ def start_jeopardy(n_clicks):
 
         # create an instance of the JeopardyGame object and use it to generate categories, clues, and answers
         game = JeopardyGame()
-        game.generate_categories()
-        game.generate_category_titles()
-        game.generate_questions()
-
         questions = game.get_questions()
         answers = game.get_answers()
         categories = game.get_categories()
@@ -506,7 +466,6 @@ def start_jeopardy(n_clicks):
         ]
 
         row_list = []
-
         clue_value = 0
 
         # generate buttons which will cause a modal with a clue to popup when clicked
@@ -535,7 +494,7 @@ def start_jeopardy(n_clicks):
                             ),
                         ],
                         id="modal" + str(i), backdrop=True),
-                ])],style={
+                ])], style={
                     'width': '20%',
                     'height': '80px',
                     'text-align': 'center',
@@ -580,195 +539,8 @@ def start_jeopardy(n_clicks):
                  'align-items': 'center',
                  'padding-top': '15px'}
 
-
-@app.callback(
-    [Output('modal0', 'style'), Output('modal-button0', 'style'),
-     Output('modal1', 'style'), Output('modal-button1', 'style'),
-     Output('modal2', 'style'), Output('modal-button2', 'style'),
-     Output('modal3', 'style'), Output('modal-button3', 'style'),
-     Output('modal4', 'style'), Output('modal-button4', 'style'),
-     Output('modal5', 'style'), Output('modal-button5', 'style'),
-     Output('modal6', 'style'), Output('modal-button6', 'style'),
-     Output('modal7', 'style'), Output('modal-button7', 'style'),
-     Output('modal8', 'style'), Output('modal-button8', 'style'),
-     Output('modal9', 'style'), Output('modal-button9', 'style'),
-     Output('modal11', 'style'), Output('modal-button11', 'style'),
-     Output('modal10', 'style'), Output('modal-button10', 'style'),
-     Output('modal12', 'style'), Output('modal-button12', 'style'),
-     Output('modal13', 'style'), Output('modal-button13', 'style'),
-     Output('modal14', 'style'), Output('modal-button14', 'style'),
-     Output('modal15', 'style'), Output('modal-button15', 'style'),
-     Output('modal16', 'style'), Output('modal-button16', 'style'),
-     Output('modal17', 'style'), Output('modal-button17', 'style'),
-     Output('modal18', 'style'), Output('modal-button18', 'style'),
-     Output('modal19', 'style'), Output('modal-button19', 'style'),
-     Output('modal20', 'style'), Output('modal-button20', 'style'),
-     Output('modal21', 'style'), Output('modal-button21', 'style'),
-     Output('modal22', 'style'), Output('modal-button22', 'style'),
-     Output('modal23', 'style'), Output('modal-button23', 'style'),
-     Output('modal24', 'style'), Output('modal-button24', 'style'),
-     Output('score-button', 'children'), Output('used-buttons', 'children')],
-    [Input("check-question-button0", "n_clicks"), Input("check-question-button1", "n_clicks"),
-     Input("check-question-button2", "n_clicks"), Input("check-question-button3", "n_clicks"),
-     Input("check-question-button4", "n_clicks"), Input("check-question-button5", "n_clicks"),
-     Input("check-question-button6", "n_clicks"), Input("check-question-button7", "n_clicks"),
-     Input("check-question-button8", "n_clicks"), Input("check-question-button9", "n_clicks"),
-     Input("check-question-button10", "n_clicks"), Input("check-question-button11", "n_clicks"),
-     Input("check-question-button12", "n_clicks"), Input("check-question-button13", "n_clicks"),
-     Input("check-question-button14", "n_clicks"), Input("check-question-button15", "n_clicks"),
-     Input("check-question-button16", "n_clicks"), Input("check-question-button17", "n_clicks"),
-     Input("check-question-button18", "n_clicks"), Input("check-question-button19", "n_clicks"),
-     Input("check-question-button20", "n_clicks"), Input("check-question-button21", "n_clicks"),
-     Input("check-question-button22", "n_clicks"), Input("check-question-button23", "n_clicks"),
-     Input("check-question-button24", "n_clicks")],
-    [State('answer0', 'value'), State('answer1', 'value'), State('answer2', 'value'),
-     State('answer3', 'value'), State('answer4', 'value'), State('answer5', 'value'),
-     State('answer6', 'value'), State('answer7', 'value'), State('answer8', 'value'),
-     State('answer9', 'value'), State('answer10', 'value'), State('answer11', 'value'),
-     State('answer12', 'value'), State('answer13', 'value'), State('answer14', 'value'),
-     State('answer15', 'value'), State('answer16', 'value'), State('answer17', 'value'),
-     State('answer18', 'value'), State('answer19', 'value'), State('answer20', 'value'),
-     State('answer21', 'value'), State('answer22', 'value'), State('answer23', 'value'),
-     State('answer24', 'value'), State('score-button', 'children'), State('answers', 'children'),
-     State('used-buttons', 'children')])
-def check_answer(n_clicks0, n_clicks1, n_clicks2, n_clicks3, n_clicks4, n_clicks5, n_clicks6, n_clicks7, n_clicks8,
-                 n_clicks9, n_clicks10, n_clicks11, n_clicks12, n_clicks13, n_clicks14, n_clicks15, n_clicks16,
-                 n_clicks17, n_clicks18, n_clicks19, n_clicks20, n_clicks21, n_clicks22, n_clicks23, n_clicks24,
-                 answer0, answer1, answer2, answer3, answer4, answer5, answer6, answer7, answer8, answer9, answer10,
-                 answer11, answer12, answer13, answer14, answer15, answer16, answer17, answer18, answer19, answer20,
-                 answer21, answer22, answer23, answer24, current_score, answers, used_buttons):
-    """ Since dash does not allow multiple callbacks to have the same output, I unfortunately had to use one function
-        to check answers submitted to any of the questions. This function uses dash callback context to determine which
-        submit button was pressed. It then checks if the answer corresponds with that in the list of answers and
-        updates the score accordingly.
-
-        Parameters:
-            n_clicks (int):Number of times play-button was clicked
-
-        Returns:
-            dbc.Table:table that will represent the game board
-            list:list of answers to questions
-            html.Div:div that contains a button and badge to represent the player's score
-
-        """
-
-    # Use dash callback context to find out which submit button was pressed
-    ctx = dash.callback_context
-
-    # Extract button number
-    button_num = ctx.triggered[0]['prop_id'].split('.')[0]
-    button_num = extract_num(button_num)
-
-    # Check which button was pressed and update the current score based on whether or not the answer was correct
-    if button_num == 0:
-        current_score = update_score(answer0, button_num, answers, current_score)
-    elif button_num == 1:
-        current_score = update_score(answer1, button_num, answers, current_score)
-    elif button_num == 2:
-        current_score = update_score(answer2, button_num, answers, current_score)
-    elif button_num == 3:
-        current_score = update_score(answer3, button_num, answers, current_score)
-    elif button_num == 4:
-        current_score = update_score(answer4, button_num, answers, current_score)
-    elif button_num == 5:
-        current_score = update_score(answer5, button_num, answers, current_score)
-    elif button_num == 6:
-        current_score = update_score(answer6, button_num, answers, current_score)
-    elif button_num == 7:
-        current_score = update_score(answer7, button_num, answers, current_score)
-    elif button_num == 8:
-        current_score = update_score(answer8, button_num, answers, current_score)
-    elif button_num == 9:
-        current_score = update_score(answer9, button_num, answers, current_score)
-    elif button_num == 10:
-        current_score = update_score(answer10, button_num, answers, current_score)
-    elif button_num == 11:
-        current_score = update_score(answer11, button_num, answers, current_score)
-    elif button_num == 12:
-        current_score = update_score(answer12, button_num, answers, current_score)
-    elif button_num == 13:
-        current_score = update_score(answer13, button_num, answers, current_score)
-    elif button_num == 14:
-        current_score = update_score(answer14, button_num, answers, current_score)
-    elif button_num == 15:
-        current_score = update_score(answer15, button_num, answers, current_score)
-    elif button_num == 16:
-        current_score = update_score(answer16, button_num, answers, current_score)
-    elif button_num == 17:
-        current_score = update_score(answer17, button_num, answers, current_score)
-    elif button_num == 18:
-        current_score = update_score(answer18, button_num, answers, current_score)
-    elif button_num == 19:
-        current_score = update_score(answer19, button_num, answers, current_score)
-    elif button_num == 20:
-        current_score = update_score(answer20, button_num, answers, current_score)
-    elif button_num == 21:
-        current_score = update_score(answer21, button_num, answers, current_score)
-    elif button_num == 22:
-        current_score = update_score(answer22, button_num, answers, current_score)
-    elif button_num == 23:
-        current_score = update_score(answer23, button_num, answers, current_score)
-    elif button_num == 24:
-        current_score = update_score(answer24, button_num, answers, current_score)
-
-    # List that keeps track of which questions have already been attempted
-    used_buttons.append(button_num)
-
-    output_list = []
-
-    # Populate a list that will be used to style the table elements based on whether or not the corresponding question
-    # has been attempted
-    for i in range(0, 25):
-        if i not in used_buttons:
-            output_list.append({})
-            output_list.append({
-                'color': '#FFCC00',
-                'font-weight': 'bold'
-            })
-        else:
-            output_list.append({'display': 'none'})
-            output_list.append({'display': 'none'})
-
-    output_list.append(current_score)
-    output_list.append(used_buttons)
-
-    return output_list
-
-
-def extract_num(button_num):
-    output = ""
-    for i in range(len(button_num)):
-        if button_num[i].isdigit():
-            output += button_num[i]
-    return int(output)
-
-
-def update_score(answer, button_num, answers, current_score):
-    if answer == answers[button_num]:
-        if button_num <= 4:
-            current_score += 200
-        elif button_num <= 9:
-            current_score += 400
-        elif button_num <= 14:
-            current_score += 600
-        elif button_num <= 19:
-            current_score += 800
-        elif button_num <= 24:
-            current_score += 1000
-    else:
-        if button_num <= 4:
-            current_score -= 200
-        elif button_num <= 9:
-            current_score -= 400
-        elif button_num <= 14:
-            current_score -= 600
-        elif button_num <= 19:
-            current_score -= 800
-        elif button_num <= 24:
-            current_score -= 1000
-    return current_score
-
-
+# The following callbacks all toggle their corresponding modals so that when the user clicks on a value in a category
+# column, the corresonding modal pops up
 @app.callback(
     Output("modal0", "is_open"),
     [Input("modal-button0", "n_clicks")],
@@ -1049,12 +821,272 @@ def toggle_modal(n, is_open):
               [State('datatable', 'selected_rows'),
                State('datatable2', 'data'),
                State('datatable', 'data')])
-def printData(n_clicks, input1, input2, input3):
-    favorites_list = input2
-    for selected_row in input1:
-        if input3[selected_row] not in favorites_list:
-            favorites_list.append(input3[selected_row])
+def store_favorites(n_clicks, selected_rows, existing_favorites, data):
+    """ Stores selected favorite questions into the table in the favorites tab
+    Parameters:
+        n_clicks (int):Number of times the save to favorites button has been clicked
+        existing_favorites (list): List of clues already added to favorites
+        data (list): list of data from search table
+
+    Returns:
+        favorites_list (list): list of favorites that the user has saved
+
+    """
+    favorites_list = existing_favorites
+    for selected_row in selected_rows:
+        if data[selected_row] not in favorites_list:
+            favorites_list.append(data[selected_row])
     return favorites_list
+
+
+@app.callback(
+    [Output('modal0', 'style'), Output('modal-button0', 'style'),
+     Output('modal1', 'style'), Output('modal-button1', 'style'),
+     Output('modal2', 'style'), Output('modal-button2', 'style'),
+     Output('modal3', 'style'), Output('modal-button3', 'style'),
+     Output('modal4', 'style'), Output('modal-button4', 'style'),
+     Output('modal5', 'style'), Output('modal-button5', 'style'),
+     Output('modal6', 'style'), Output('modal-button6', 'style'),
+     Output('modal7', 'style'), Output('modal-button7', 'style'),
+     Output('modal8', 'style'), Output('modal-button8', 'style'),
+     Output('modal9', 'style'), Output('modal-button9', 'style'),
+     Output('modal11', 'style'), Output('modal-button11', 'style'),
+     Output('modal10', 'style'), Output('modal-button10', 'style'),
+     Output('modal12', 'style'), Output('modal-button12', 'style'),
+     Output('modal13', 'style'), Output('modal-button13', 'style'),
+     Output('modal14', 'style'), Output('modal-button14', 'style'),
+     Output('modal15', 'style'), Output('modal-button15', 'style'),
+     Output('modal16', 'style'), Output('modal-button16', 'style'),
+     Output('modal17', 'style'), Output('modal-button17', 'style'),
+     Output('modal18', 'style'), Output('modal-button18', 'style'),
+     Output('modal19', 'style'), Output('modal-button19', 'style'),
+     Output('modal20', 'style'), Output('modal-button20', 'style'),
+     Output('modal21', 'style'), Output('modal-button21', 'style'),
+     Output('modal22', 'style'), Output('modal-button22', 'style'),
+     Output('modal23', 'style'), Output('modal-button23', 'style'),
+     Output('modal24', 'style'), Output('modal-button24', 'style'),
+     Output('score-button', 'children'), Output('used-buttons', 'children')],
+    [Input("check-question-button0", "n_clicks"), Input("check-question-button1", "n_clicks"),
+     Input("check-question-button2", "n_clicks"), Input("check-question-button3", "n_clicks"),
+     Input("check-question-button4", "n_clicks"), Input("check-question-button5", "n_clicks"),
+     Input("check-question-button6", "n_clicks"), Input("check-question-button7", "n_clicks"),
+     Input("check-question-button8", "n_clicks"), Input("check-question-button9", "n_clicks"),
+     Input("check-question-button10", "n_clicks"), Input("check-question-button11", "n_clicks"),
+     Input("check-question-button12", "n_clicks"), Input("check-question-button13", "n_clicks"),
+     Input("check-question-button14", "n_clicks"), Input("check-question-button15", "n_clicks"),
+     Input("check-question-button16", "n_clicks"), Input("check-question-button17", "n_clicks"),
+     Input("check-question-button18", "n_clicks"), Input("check-question-button19", "n_clicks"),
+     Input("check-question-button20", "n_clicks"), Input("check-question-button21", "n_clicks"),
+     Input("check-question-button22", "n_clicks"), Input("check-question-button23", "n_clicks"),
+     Input("check-question-button24", "n_clicks")],
+    [State('answer0', 'value'), State('answer1', 'value'), State('answer2', 'value'),
+     State('answer3', 'value'), State('answer4', 'value'), State('answer5', 'value'),
+     State('answer6', 'value'), State('answer7', 'value'), State('answer8', 'value'),
+     State('answer9', 'value'), State('answer10', 'value'), State('answer11', 'value'),
+     State('answer12', 'value'), State('answer13', 'value'), State('answer14', 'value'),
+     State('answer15', 'value'), State('answer16', 'value'), State('answer17', 'value'),
+     State('answer18', 'value'), State('answer19', 'value'), State('answer20', 'value'),
+     State('answer21', 'value'), State('answer22', 'value'), State('answer23', 'value'),
+     State('answer24', 'value'), State('score-button', 'children'), State('answers', 'children'),
+     State('used-buttons', 'children')])
+def check_answer(n_clicks0, n_clicks1, n_clicks2, n_clicks3, n_clicks4, n_clicks5, n_clicks6, n_clicks7, n_clicks8,
+                 n_clicks9, n_clicks10, n_clicks11, n_clicks12, n_clicks13, n_clicks14, n_clicks15, n_clicks16,
+                 n_clicks17, n_clicks18, n_clicks19, n_clicks20, n_clicks21, n_clicks22, n_clicks23, n_clicks24,
+                 answer0, answer1, answer2, answer3, answer4, answer5, answer6, answer7, answer8, answer9, answer10,
+                 answer11, answer12, answer13, answer14, answer15, answer16, answer17, answer18, answer19, answer20,
+                 answer21, answer22, answer23, answer24, current_score, answers, used_buttons):
+    """ Since dash does not allow multiple callbacks to have the same output, I unfortunately had to use one function
+        to check answers submitted to any of the questions. This function uses dash callback context to determine which
+        submit button was pressed. It then checks if the answer is the same as with the answer stored in the index
+        of the button number in the answer list and updates the score accordingly
+
+    Parameters:
+        n_clicks0-n_clicks24 (int):Number of times corresponding submit-button was clicked
+        answer0-answer24 (string): Answer that user submitted for a question
+
+    Returns:
+        output_list (list): a list containing various data types that is used to hide answered questions and update
+        the score
+
+    """
+
+    # Use dash callback context to find out which submit button was pressed
+    ctx = dash.callback_context
+
+    # Extract button number
+    button_num = ctx.triggered[0]['prop_id'].split('.')[0]
+    button_num = extract_num(button_num)
+
+    # Check which button was pressed and update the current score based on whether or not the answer was correct
+    if button_num == 0:
+        current_score = update_score(answer0, button_num, answers, current_score)
+    elif button_num == 1:
+        current_score = update_score(answer1, button_num, answers, current_score)
+    elif button_num == 2:
+        current_score = update_score(answer2, button_num, answers, current_score)
+    elif button_num == 3:
+        current_score = update_score(answer3, button_num, answers, current_score)
+    elif button_num == 4:
+        current_score = update_score(answer4, button_num, answers, current_score)
+    elif button_num == 5:
+        current_score = update_score(answer5, button_num, answers, current_score)
+    elif button_num == 6:
+        current_score = update_score(answer6, button_num, answers, current_score)
+    elif button_num == 7:
+        current_score = update_score(answer7, button_num, answers, current_score)
+    elif button_num == 8:
+        current_score = update_score(answer8, button_num, answers, current_score)
+    elif button_num == 9:
+        current_score = update_score(answer9, button_num, answers, current_score)
+    elif button_num == 10:
+        current_score = update_score(answer10, button_num, answers, current_score)
+    elif button_num == 11:
+        current_score = update_score(answer11, button_num, answers, current_score)
+    elif button_num == 12:
+        current_score = update_score(answer12, button_num, answers, current_score)
+    elif button_num == 13:
+        current_score = update_score(answer13, button_num, answers, current_score)
+    elif button_num == 14:
+        current_score = update_score(answer14, button_num, answers, current_score)
+    elif button_num == 15:
+        current_score = update_score(answer15, button_num, answers, current_score)
+    elif button_num == 16:
+        current_score = update_score(answer16, button_num, answers, current_score)
+    elif button_num == 17:
+        current_score = update_score(answer17, button_num, answers, current_score)
+    elif button_num == 18:
+        current_score = update_score(answer18, button_num, answers, current_score)
+    elif button_num == 19:
+        current_score = update_score(answer19, button_num, answers, current_score)
+    elif button_num == 20:
+        current_score = update_score(answer20, button_num, answers, current_score)
+    elif button_num == 21:
+        current_score = update_score(answer21, button_num, answers, current_score)
+    elif button_num == 22:
+        current_score = update_score(answer22, button_num, answers, current_score)
+    elif button_num == 23:
+        current_score = update_score(answer23, button_num, answers, current_score)
+    elif button_num == 24:
+        current_score = update_score(answer24, button_num, answers, current_score)
+
+    # List that keeps track of which questions have already been attempted
+    used_buttons.append(button_num)
+    output_list = []
+
+    # Populate a list that will be used to hide questions who have already been attempted
+    for i in range(0, 25):
+        if i not in used_buttons:
+            output_list.append({})
+            output_list.append({
+                'color': '#FFCC00',
+                'font-weight': 'bold'
+            })
+        else:
+            output_list.append({'display': 'none'})
+            output_list.append({'display': 'none'})
+
+    output_list.append(current_score)
+    output_list.append(used_buttons)
+
+    return output_list
+
+
+def make_api_call(clue_value, category_ID, min_date, max_date, offset):
+    """ Makes call to /api/clues and returns json of response.
+
+    Parameters:
+        clue_value (int): Value of clues to search for
+        category_ID(int): Category id of clues to search for
+        min_date (date): minimum date of clues to return
+        max_date(date): maximum date of clues to return
+        offset(int): offset of dates to return
+
+    Returns:
+        json of response
+
+    """
+    parameters = {
+        "value": clue_value,
+        "category": category_ID,
+        "min_date": parse_date(min_date),
+        "max_date": parse_date(max_date),
+        "offset": offset
+    }
+    response = requests.get("http://jservice.io/api/clues/", params=parameters)
+    return response.json()
+
+
+def extract_num(button_num):
+    """ Extracts the button number from a string
+
+    Parameters:
+        button_num (str): A string representing the id of the submit button pressed
+
+    Returns:
+        integer matching the button number
+
+    """
+    output = ""
+    for i in range(len(button_num)):
+        if button_num[i].isdigit():
+            output += button_num[i]
+    return int(output)
+
+
+def update_score(answer, button_num, answers, current_score):
+    """ Updates a user's score by checking if their answer to a question is correct
+
+    Parameters:
+        answer (str): A string representing the user's submitted answer
+        button_num (int): integer corresponding with the pressed submit button
+        answers (list): A list with all of the correct answers
+        current_score (int): The user's current score
+
+    Returns:
+        integer matching the button number
+
+    """
+    if answer == answers[button_num]:
+        if button_num <= 4:
+            current_score += 200
+        elif button_num <= 9:
+            current_score += 400
+        elif button_num <= 14:
+            current_score += 600
+        elif button_num <= 19:
+            current_score += 800
+        elif button_num <= 24:
+            current_score += 1000
+    else:
+        if button_num <= 4:
+            current_score -= 200
+        elif button_num <= 9:
+            current_score -= 400
+        elif button_num <= 14:
+            current_score -= 600
+        elif button_num <= 19:
+            current_score -= 800
+        elif button_num <= 24:
+            current_score -= 1000
+    return current_score
+
+
+def parse_date(date_string):
+    """ Returns a string converted to a date.
+
+    Parameters:
+        date_string (str): The string which is to be converted
+
+    Returns:
+        datetime_obj: The converted date
+
+    """
+    if date_string is None:
+        return None
+
+    format_str = '%m/%d/%Y'
+    datetime_obj = datetime.datetime.strptime(date_string, format_str)
+    return datetime_obj
 
 
 if __name__ == '__main__':
