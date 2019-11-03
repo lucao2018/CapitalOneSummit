@@ -53,7 +53,6 @@ def populateDatabase():
                     data = JeopardyTable(category_title, category_id)
                     db.session.add(data)
                     db.session.commit()
-                    print("added")
         offset += 100
 
 
@@ -74,87 +73,143 @@ app.layout = html.Div([
 
                 html.Br(),
 
-                html.Div([
+                html.Div(id='search', style={
+                    'display': 'flex',
+                    'justify-content': 'center',
+                    # 'margin-top': '0',
+                    # 'margin-bottom': '0',
+                    # 'margin-right': 'auto',
+                    # 'margin-left': 'auto'
+                }, children=[
                     html.Div([
-                        html.H6(children="Search for a category by key word/phrase (required)", style={
-                            'margin-left': '1em'
-                        }),
-                        dbc.Input(
-                            id='category-value',
-                            type='text',
-                            style={
-                                'margin-left': '1em',
-                                'width': '300px'
-                            },
-                            placeholder="Potpourri",
-                        ),
-                        html.Br(),
-                        html.H6(
-                            children="Type in the value of the clue in dollars (omit the dollar sign): ",
-                            style={
+                        html.Div(style={
+                            'display': 'flex',
+                            'justify-content': 'center'
+                        }, children=[
+                            html.H6(children="Search for a category by key word/phrase (required)", style={
                                 'margin-left': '1em'
-                            },
-                        ),
-                        dbc.Input(
-                            id='clue-value',
-                            style={
-                                'margin-left': '1em',
-                                'width': '300px'
-                            },
-                            placeholder=200,
-                            type="number"
-                        ),
+                            })
+                        ]),
+                        html.Div(style={
+                            'display': 'flex',
+                            'justify-content': 'center'
+                        },
+                            children=[
+                                dbc.Input(
+                                    id='category-value',
+                                    type='text',
+                                    style={
+                                        'margin-left': '1em',
+                                        'width': '300px',
+                                    },
+                                    placeholder="Potpourri",
+                                ),
+                            ]),
+
                         html.Br(),
-                        html.H6(
-                            children="Type in the range of dates that you would like to see clues from: ",
-                            style={
-                                'margin-left': '1em'
-                            }
-                        ),
-                        dbc.Row([
-                        dbc.Input(
-                            id='min-date',
-                            type='text',
-                            style={
-                                'margin-left': '2em',
-                                'width': '300px'
-                            },
-                            placeholder='mm/dd/yyyy',
-                        ),
-                        dbc.Input(
-                            id='max-date',
-                            type='text',
-                            style={
-                                'margin-left': '1em',
-                                'width': '300px'
-                            },
-                            placeholder='mm/dd/yyyy',
-                        )]),
+                        html.Div(style={
+                            'display': 'flex',
+                            'justify-content': 'center'
+                        },
+                            children=[html.H6(
+                                children="Type in the value of the clue in dollars (omit the dollar sign): ",
+                                style={
+                                    'margin-left': '1em'
+
+                                },
+                            ),
+                            ]),
+
+                        html.Div(style={
+                            'display': 'flex',
+                            'justify-content': 'center'
+                        }, children=[
+                            dbc.Input(
+                                id='clue-value',
+                                style={
+                                    'margin-left': '1em',
+                                    'width': '300px'
+                                },
+                                placeholder=200,
+                                type="number"
+                            ),
+                        ]),
+
                         html.Br(),
-                        html.H6(children="How many clues would you like be returned",
+                        html.Div(style={
+                            'display': 'flex',
+                            'justify-content': 'center'
+                        }, children=[
+                            html.H6(
+                                children="Type in the range of dates that you would like to see clues from: ",
                                 style={
                                     'margin-left': '1em'
                                 }
-                                ),
-                        dbc.Input(
-                            id='num-clues',
-                            type='number',
-                            style={
-                                'margin-left': '1em',
-                                'width': '300px'
-                            },
-                            placeholder=100
+                            )
+                        ]),
 
+                        dbc.Row([
+                            dbc.Input(
+                                id='min-date',
+                                type='text',
+                                style={
+                                    'margin-left': '2em',
+                                    'width': '300px'
+                                },
+                                placeholder='mm/dd/yyyy',
+                            ),
+                            dbc.Input(
+                                id='max-date',
+                                type='text',
+                                style={
+                                    'margin-left': '1em',
+                                    'width': '300px'
+                                },
+                                placeholder='mm/dd/yyyy',
+                            )]),
+                        html.Br(),
+                        html.Div(style={
+                            'display': 'flex',
+                            'justify-content': 'center'
+                        },
+                            children=[html.H6(children="How many clues would you like be returned",
+                                              style={
+                                                  'margin-left': '1em'
+                                              }
+                                              ), ]
                         ),
+
+                        html.Div(style={
+                            'display': 'flex',
+                            'justify-content': 'center'
+                        }, children=[
+                            dbc.Input(
+                                id='num-clues',
+                                type='number',
+                                style={
+                                    'margin-left': '1em',
+                                    'width': '300px'
+                                },
+                                placeholder=100
+
+                            ),
+                        ]),
+
                     ]),
 
                 ]),
                 html.Br(),
-                dbc.Button(id='submit-button', n_clicks=0, children='Search',
-                           style={
-                               'margin-left': '1em'
-                           }
-                           ),
+                html.Div(style={
+                    'display': 'flex',
+                    'justify-content': 'center'
+                }, children=[
+                    dbc.Button(id='submit-button', n_clicks=0, children='Search',
+                               style={
+                                   'margin-left': '1em'
+                               }
+                               )
+                ]),
+
             ]),
 
             html.Br(),
@@ -172,46 +227,78 @@ app.layout = html.Div([
             html.Div(
                 dash_table.DataTable(
                     id='datatable2',
+                    style_table={
+                        'width': '97.5%',
+                        'margin-left': 'auto',
+                        'margin-right': 'auto',
+                        'padding-top': '15px'
+                    },
+                    style_header={
+                        'backgroundColor': 'white',
+                        'fontWeight': 'bold'
+                    },
+                    page_size=20,
                     style_cell={
                         'whiteSpace': 'normal',
-                        'height': 'auto',
-                        'minWidth': '0px', 'maxWidth': '180px'
+                        'minWidth': '0px', 'maxWidth': '280px',
                     },
-                    columns=[{"name": "Question Value", "id": "value"},
+                    style_cell_conditional=[
+                        {'if': {'column_id': 'value'},
+                         'width': '20px'},
+                        {'if': {'column_id': 'category_id'},
+                         'width': '30px'},
+                        {'if': {'column_id': 'Category Names'},
+                         'textAlign': 'left',
+                         'width': '250px'},
+                        {'if': {'column_id': 'question'},
+                         'textAlign': 'left'},
+                        {'if': {'column_id': 'answer'},
+                         'textAlign': 'left',
+                         'width': '120px'},
+                        {'if': {'column_id': 'airdate'},
+                         'width': '120px'},
+                    ],
+
+                    columns=[{"name": "Value", "id": "value"},
                              {"name": "Question", "id": "question"},
                              {"name": "Answer", "id": "answer"},
                              {"name": "Category", "id": "Category Names"},
                              {"name": "Category ID", "id": "category_id"},
                              {"name": "Air Date", "id": "airdate"}],
                     data=[],
-                    css=[{
-                        'selector': '.dash-cell div.dash-cell-value',
-                        'rule': 'display: inline; white-space: inherit; overflow: inherit; text-overflow: inherit;'
-                    }],
-                    editable=True,
-                    sort_action="custom",
-                    sort_mode="multi",
-                    sort_by=[],
                     row_selectable="multi",
                     row_deletable=True,
                     selected_rows=[],
-                    page_action="native",
+                    page_action='native',
                     page_current=0,
                 ),
             ),
         ]),
 
         dcc.Tab(label="Play Jeopardy!", children=[
-            dbc.Button("Click To Start A New Game", id='play-button', style= {
-                'margin-left': '0',
-                'margin-right': 'auto'
-            }),
+            html.Br(),
             html.Div(id='table-div', children=[
 
             ]),
-dbc.Button(
-    ["Score", dbc.Badge(0, color="light", className="ml-1")],
-    color="primary"),
+            html.Div(id="score", children=[
+
+            ]),
+            html.Div(id='play-div', style={
+                'display': 'flex',
+                'justify-content': 'center',
+                'align-items': 'center',
+                'padding-top': '50px'
+            },
+                     children=[
+                         dbc.Button("Click To Start A New Game", id='play-button'),
+                     ]),
+
+            html.Div(children=[
+
+            ]),
+            # dbc.Button(
+            #     ["Score", dbc.Badge(0, color="light", className="ml-1")],
+            #     color="primary"),
             html.Div(id='answers', style={'display': 'none'}),
             html.Div(id='used-buttons', style={'display': 'none'}, children=[
 
@@ -277,7 +364,7 @@ def generate_table(n_clicks, input1, input2, input3, input4, input5):
             return [dash_table.DataTable(
                 id='datatable',
 
-                style_table = {
+                style_table={
                     'width': '97.5%',
                     'margin-left': 'auto',
                     'margin-right': 'auto'
@@ -290,7 +377,7 @@ def generate_table(n_clicks, input1, input2, input3, input4, input5):
                 style_cell={
                     'whiteSpace': 'normal',
                     'minWidth': '0px', 'maxWidth': '280px',
-            },
+                },
                 style_cell_conditional=[
                     {'if': {'column_id': 'value'},
                      'width': '20px'},
@@ -320,7 +407,7 @@ def generate_table(n_clicks, input1, input2, input3, input4, input5):
                 selected_rows=[],
                 page_action='native',
                 page_current=0,
-            ), dbc.Button(id='submit-button2', n_clicks=0, children='Save To Favorites', style = {
+            ), dbc.Button(id='submit-button2', n_clicks=0, children='Save To Favorites', style={
                 'margin-left': '1em',
                 'margin-bottom': '1em'
             })]
@@ -328,22 +415,12 @@ def generate_table(n_clicks, input1, input2, input3, input4, input5):
     else:
         raise PreventUpdate
 
-@app.callback(Output('datatable2', 'data'),
-              [Input('submit-button2', 'n_clicks')],
-              [State('datatable', 'selected_rows'),
-               State('datatable2', 'data'),
-               State('datatable', 'data')])
-def printData(n_clicks, input1, input2, input3):
-    favorites_list = input2
-    for selected_row in input1:
-        if input3[selected_row] not in favorites_list:
-            favorites_list.append(input3[selected_row])
-    return favorites_list
-
 
 @app.callback([
     Output('table-div', 'children'),
-    Output('answers', 'children')],
+    Output('answers', 'children'),
+    Output('score', 'children'),
+    Output('play-div', 'style')],
     [Input('play-button', 'n_clicks')])
 def startJeopardy(n_clicks):
     if n_clicks == None:
@@ -357,7 +434,6 @@ def startJeopardy(n_clicks):
         questions = game.get_questions()
         answers = game.get_answers()
         categories = game.get_categories()
-        print(answers)
 
         headers = []
         for category in categories:
@@ -429,10 +505,23 @@ def startJeopardy(n_clicks):
         table_body = [html.Tbody([row1, row2, row3, row4, row5])]
 
         table = dbc.Table(table_header + table_body, bordered=True, style={
-            'background-color': '#060CE9'
+            'background-color': '#060CE9',
+            'width': '97.5%',
+            'margin-left': 'auto',
+            'margin-right': 'auto',
+            'padding-top': '15px',
+            'bordered': True,
         })
 
-        return table, answers
+        return table, answers, html.Div(
+            children=[dbc.Button(["Score ", dbc.Badge(id="score-button", color="light", children=0)], color="primary")],
+            style={
+                'display': 'flex',
+                'justify-content': 'center'
+            }), {'display': 'flex',
+                'justify-content': 'center',
+                'align-items': 'center',
+                'padding-top': '15px'}
 
 
 @app.callback(
@@ -461,7 +550,7 @@ def startJeopardy(n_clicks):
      Output('popover22', 'style'), Output('popover-target22', 'style'),
      Output('popover23', 'style'), Output('popover-target23', 'style'),
      Output('popover24', 'style'), Output('popover-target24', 'style'),
-     Output('score', 'children'), Output('used-buttons', 'children')
+     Output('score-button', 'children'), Output('used-buttons', 'children')
      ],
     [Input("check-question-button0", "n_clicks"),
      Input("check-question-button1", "n_clicks"),
@@ -513,7 +602,7 @@ def startJeopardy(n_clicks):
      State('answer22', 'value'),
      State('answer23', 'value'),
      State('answer24', 'value'),
-     State('score', 'children'),
+     State('score-button', 'children'),
      State('answers', 'children'),
      State('used-buttons', 'children')])
 def checkAnswer(n_clicks0, n_clicks1, n_clicks2, n_clicks3, n_clicks4, n_clicks5, n_clicks6, n_clicks7, n_clicks8,
@@ -525,7 +614,6 @@ def checkAnswer(n_clicks0, n_clicks1, n_clicks2, n_clicks3, n_clicks4, n_clicks5
                 , answer14, answer15, answer16, answer17, answer18, answer19, answer20, answer21, answer22, answer23,
                 answer24, currentScore, answers, usedButtons):
     ctx = dash.callback_context
-    print(ctx.states)
     buttonNum = ctx.triggered[0]['prop_id'].split('.')[0]
     buttonNum = extract_num(buttonNum)
     if buttonNum == 0:
