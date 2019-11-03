@@ -378,6 +378,11 @@ def generate_table(n_clicks, clue_value, category_value, min_date, max_date, num
                 if num_clues is not None:
                     if len(table_data) >= int(num_clues):
                         break
+                if min_date == "":
+                    min_date = None
+                if max_date == "":
+                    max_date = None
+
                 try:
                     json_response = make_api_call(clue_value, id, min_date, max_date, 0)
                     table_data += json_response
