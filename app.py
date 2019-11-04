@@ -357,6 +357,10 @@ def generate_table(n_clicks, clue_value, category_value, min_date, max_date, num
                     table_data += json_response
                 except:
                     return dbc.Alert("Format for an input was invalid", color="danger", dismissable=True), []
+            for item in table_data:
+
+                #extract date in mm-yyyy-dd format
+                item['airdate'] = (item['airdate'])[0:10]
             data = pd.DataFrame.from_dict(table_data)
 
             # get the names of the categories and add to our data dict
@@ -1116,4 +1120,4 @@ def parse_date(date_string):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=False)
+    app.run_server(debug=True)
