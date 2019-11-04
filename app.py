@@ -287,6 +287,7 @@ app.layout = html.Div(children=[
             html.Div(id='answers', style={'display': 'none'}),
             html.Div(id='used-buttons', style={'display': 'none'}, children=[
             ]),
+            html.Div(id='correctness', children=[])
         ])
     ])
 ])
@@ -538,6 +539,7 @@ def start_jeopardy(n_clicks):
                  'justify-content': 'center',
                  'align-items': 'center',
                  'padding-top': '15px'}
+
 
 # The following callbacks all toggle their corresponding modals so that when the user clicks on a value in a category
 # column, the corresonding modal pops up
@@ -865,7 +867,7 @@ def store_favorites(n_clicks, selected_rows, existing_favorites, data):
      Output('modal22', 'style'), Output('modal-button22', 'style'),
      Output('modal23', 'style'), Output('modal-button23', 'style'),
      Output('modal24', 'style'), Output('modal-button24', 'style'),
-     Output('score-button', 'children'), Output('used-buttons', 'children')],
+     Output('score-button', 'children'), Output('used-buttons', 'children'), Output('correctness', 'children')],
     [Input("check-question-button0", "n_clicks"), Input("check-question-button1", "n_clicks"),
      Input("check-question-button2", "n_clicks"), Input("check-question-button3", "n_clicks"),
      Input("check-question-button4", "n_clicks"), Input("check-question-button5", "n_clicks"),
@@ -916,6 +918,8 @@ def check_answer(n_clicks0, n_clicks1, n_clicks2, n_clicks3, n_clicks4, n_clicks
     # Extract button number
     button_num = ctx.triggered[0]['prop_id'].split('.')[0]
     button_num = extract_num(button_num)
+
+    old_score = current_score
 
     # Check which button was pressed and update the current score based on whether or not the answer was correct
     if button_num == 0:
@@ -987,6 +991,23 @@ def check_answer(n_clicks0, n_clicks1, n_clicks2, n_clicks3, n_clicks4, n_clicks
 
     output_list.append(current_score)
     output_list.append(used_buttons)
+
+    # if the user gets it wrong, tell them what the correct answer is with an alert
+    if current_score < old_score:
+        output_list.append(dbc.Alert("That is incorrect. The correct answer is: " +
+                                     answers[button_num] + ".", color="danger", dismissable=True,
+                                     style={
+                                         'position': 'fixed',
+                                         'top': '50%',
+                                         'left': '50%',
+                                         'transform': 'translate(-50%, -50%)',
+                                         'height': '300px',
+                                         'width': '400px',
+                                         'z - index': '10',
+                                         'font-size': '30px',
+                                     }))
+    else:
+        output_list.append([])
 
     return output_list
 
@@ -1090,4 +1111,4 @@ def parse_date(date_string):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=False)
+    app.run_server(debug=True)
