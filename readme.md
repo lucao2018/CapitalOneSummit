@@ -2,7 +2,7 @@
 
 This is my submission for the Capital One January 2020 Software Engineering Summit. 
 
-##What it does
+## What it does
 My web application allows users to search for Jeopardy questions based on a key word/phrase.
 Users can also refine their search by value of the clue, air date (minimum to maximum range),
 and how many clues they would like to return. Users also have the option to save clues into a 
@@ -14,7 +14,7 @@ is build on top of Plotly.js, React, and Flask. I also used a postgreSQL databas
 SQLalchemy to store all of the categories and their IDs since the API only allows 100 clues to be
 returned at a time. Finally, I used Dash Bootstrap Components for styling. 
 
-##Challenges I ran into
+## Challenges I ran into
 Dash is a really awesome framework, especially for individuals such as myself who don't have a
 lot of experience with front end technologies. Dash served its purpose beautifully for
 the search engine and saving to favorites. However, since it is also a relatively new framework,
@@ -26,7 +26,7 @@ Dash dynamically generates some of the page elements and so the UI is a little m
 I would have liked. The load time of the Jeopary board also isn't where I would like it to be but that's something
 I would love to tackle if I had more time.
 
-##Accomplishments that I'm proud of
+## Accomplishments that I'm proud of
 I had never used a database before so I was pretty proud of teaching myself the basics of PostgreSQL as well as SQLAlchemy. 
 I had also never deployed a website to Heroku before so that was another great learning experience. Although I had used Dash for a previous project,
 I think that project would be considered a more typical use case for Dash so on this project, I ended up
