@@ -356,6 +356,10 @@ def generate_table(n_clicks, clue_value, category_value, min_date, max_date, num
 
                 try:
                     json_response = make_api_call(clue_value, id, min_date, max_date, 0)
+                    for item in json_response:
+                        item['answer'] = item['answer'].replace("<i>", "")
+                        item['answer'] = item['answer'].replace("</i>", "")
+
                     table_data += json_response
                 except:
                     return dbc.Alert("Format for an input was invalid", color="danger", dismissable=True), []
@@ -368,6 +372,7 @@ def generate_table(n_clicks, clue_value, category_value, min_date, max_date, num
 
                 #extract date in mm-yyyy-dd format
                 item['airdate'] = (item['airdate'])[0:10]
+
             data = pd.DataFrame.from_dict(table_data)
 
             # get the names of the categories and add to our data dict
