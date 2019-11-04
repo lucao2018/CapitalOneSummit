@@ -16,10 +16,6 @@ class JeopardyGame(object):
 
     Methods
     -------
-    __generateMissingIngredients()
-        private method that returns a dictionary with keys representing recipe names and values representing another
-        dictionary with keys representing name of missing ingredient and value representing ingredient id
-
     generate_categories()
         method that generates a list of categories used in the game
 
@@ -59,6 +55,7 @@ class JeopardyGame(object):
             "count": 1
         }
 
+        # populates self.category_ids with clues from 5 randomly generated, valid categories
         while len(self.category_ids) < 5:
             response = requests.get("http://jservice.io/api/random/", params=parameters)
             data = response.json()
@@ -105,6 +102,7 @@ class JeopardyGame(object):
         total_list_of_clues = []
         total_list_of_answers = []
 
+        # generates clues from the 5 randomly generated categories
         for i in range(200, 1001, 200):
             for id in self.category_ids:
                 parameters = {
@@ -115,7 +113,10 @@ class JeopardyGame(object):
                 data = response.json()
                 random_clue_index = random.randint(0, len(data) - 1)
                 total_list_of_clues.append(data[random_clue_index]['question'])
-                total_list_of_answers.append(data[random_clue_index]['answer'])
+                answer = data[random_clue_index]['answer']
+                answer = answer.replace("<i>", "")
+                answer = answer.replace("</i>", "")
+                total_list_of_answers.append(answer)
 
         self.questions = total_list_of_clues
         self.answers = total_list_of_answers

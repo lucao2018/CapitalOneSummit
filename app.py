@@ -331,6 +331,7 @@ def generate_table(n_clicks, clue_value, category_value, min_date, max_date, num
             # Make a query in PostgreSQL database with key word
             list_of_matches = JeopardyTable.query.filter(JeopardyTable.category.contains(category_value)).all()
 
+            print(len(list_of_matches))
             # Case for no results found
             if len(list_of_matches) == 0:
                 return dbc.Alert("No results found", color="warning", dismissable=True), []
@@ -350,6 +351,10 @@ def generate_table(n_clicks, clue_value, category_value, min_date, max_date, num
                 # Validate user input for date format
                 try:
                     json_response = make_api_call(clue_value, id, min_date, max_date, 0)
+
+                    # return warning if no results found
+                    if len(json_response) == 0:
+                        return dbc.Alert("No results found", color="warning", dismissable=True), []
                     table_data += json_response
                 except:
                     return dbc.Alert("Format for an input was invalid", color="danger", dismissable=True), []
@@ -1067,7 +1072,7 @@ def update_score(answer, button_num, answers, current_score):
         integer matching the button number
 
     """
-    if answer == answers[button_num]:
+    if answer == answers[button_num].lower():
         if button_num <= 4:
             current_score += 200
         elif button_num <= 9:
