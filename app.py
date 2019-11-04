@@ -348,15 +348,22 @@ def generate_table(n_clicks, clue_value, category_value, min_date, max_date, num
                     max_date = None
 
                 # Validate user input for date format
+                if min_date is None and max_date is not None:
+                    min_date = '02/08/1985'
+
+                if max_date is None and min_date is not None:
+                    max_date = '01/01/9999'
+
                 try:
                     json_response = make_api_call(clue_value, id, min_date, max_date, 0)
-
-                    # return warning if no results found
-                    if len(json_response) == 0:
-                        return dbc.Alert("No results found", color="warning", dismissable=True), []
                     table_data += json_response
                 except:
                     return dbc.Alert("Format for an input was invalid", color="danger", dismissable=True), []
+
+            # return warning if no results found
+            if len(table_data) == 0:
+                return dbc.Alert("No results found", color="warning", dismissable=True), []
+
             for item in table_data:
 
                 #extract date in mm-yyyy-dd format
