@@ -331,7 +331,6 @@ def generate_table(n_clicks, clue_value, category_value, min_date, max_date, num
             # Make a query in PostgreSQL database with key word
             list_of_matches = JeopardyTable.query.filter(JeopardyTable.category.contains(category_value)).all()
 
-            print(len(list_of_matches))
             # Case for no results found
             if len(list_of_matches) == 0:
                 return dbc.Alert("No results found", color="warning", dismissable=True), []
@@ -452,7 +451,6 @@ def start_jeopardy(n_clicks):
         questions = game.get_questions()
         answers = game.get_answers()
         categories = game.get_categories()
-        print(answers)
 
         # generate table headers (the categories)
         headers = []
