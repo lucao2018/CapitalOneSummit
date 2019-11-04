@@ -11,8 +11,8 @@ table of favorite clues. They can also play a Jeopardy game simulation.
 
 ## How I built it
 This application was built with Dash, a Python framework for building analytical web applications that
-is build on top of Plotly.js, React, and Flask. I also used a postgreSQL database along with
-SQLalchemy to store all of the categories and their IDs since the API only allows 100 clues to be
+is built on top of Plotly.js, React, and Flask. I also used a postgreSQL database along with
+SQLalchemy to store all of the categories and their ID's since the API only allows 100 clues to be
 returned at a time. Finally, I used Dash Bootstrap Components for styling. 
 
 ## Challenges I ran into
@@ -22,10 +22,18 @@ the search engine and saving to favorites. However, since it is also a relativel
 it does have its limitations, and I was held back by a lot of these when trying to implement the Jeopardy game. At the moment, multiple Dash callbacks cannot update the same
 output. This resulted in some pretty ugly callbacks (I have one callback that has over 20 inputs and 50 outputs)
 which I tried very hard to avoid but unfortunately, but after a lot of experimentation and trying to find
-workarounds, was unable to. I also ran into some issues with styling the page because of the way
-Dash dynamically generates some of the page elements and so the UI is a little more bland than
-I would have liked. The load time of the Jeopardy board also isn't where I would like it to be but that's something
-I would love to tackle if I had more time.
+workarounds, was unable to. There are also a few things that I would like to improve about my web app if I had
+more time. 
+
+* Improve the UI - Because of the way Dash dynamically generates some of the page content, I ran into some
+difficulties with styling so the UI is a little bit more bland than I would have liked. 
+* Improve the load time of the Jeopardy board - I would like the dynamic generation of the game board
+to be faster than it is now and hopefully find some workarounds to the Dash mechanisms
+that are causing this.
+* Have better answer checking - At the moment my answer checking disregards case but because of the way the answers are formatted
+in the JService database, some of the answers have extra punctuation or optional add ons which would cause an otherwise correct answer
+to be marked wrong. This presents a potentially interesting opportunity to evolve this project whether that's
+through NLP/machine learning or perhaps speech recognition.
 
 ## Accomplishments that I'm proud of
 I had never used a database before so I was pretty proud of teaching myself the basics of PostgreSQL as well as SQLAlchemy. 

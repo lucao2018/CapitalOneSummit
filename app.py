@@ -452,6 +452,7 @@ def start_jeopardy(n_clicks):
         questions = game.get_questions()
         answers = game.get_answers()
         categories = game.get_categories()
+        print(answers)
 
         # generate table headers (the categories)
         headers = []
@@ -1072,7 +1073,8 @@ def update_score(answer, button_num, answers, current_score):
         integer matching the button number
 
     """
-    if answer == answers[button_num].lower():
+
+    if answer.lower() == answers[button_num].lower():
         if button_num <= 4:
             current_score += 200
         elif button_num <= 9:
@@ -1116,4 +1118,4 @@ def parse_date(date_string):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=False)
