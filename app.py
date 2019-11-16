@@ -17,9 +17,7 @@ app.config.suppress_callback_exceptions = True
 app.title = "Jeopardy Search Engine"
 
 # setup postgreSQL database with SQL Alchemy
-server.config['SQLALCHEMY_DATABASE_URI'] = 'postgres://eslsfrqodntupf:05fb8ff92c769b13c26e1b7750b92a2891' \
-                                           'a8c17feb5ff06932364c7e9a53165b@ec2-107-21-120-104.compute-1.amazo' \
-                                           'naws.com:5432/d5797uop3sepcr'
+server.config['SQLALCHEMY_DATABASE_URI'] = ''
 
 server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(server)
