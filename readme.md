@@ -1,6 +1,6 @@
 # Jeopardy Trivia Web App
 
-Note: I was running a paid Heroku database to accomodate the large number of Jeopardy questions. As the challenge period has ended, I have downgraded my database and as such, the web application no longer works. 
+Note: I was running a paid Heroku database to accomodate the large number of Jeopardy questions. As the challenge period has ended, I have downgraded my database and as such, the search feature no longer works (but you can still play Jeopardy!). 
 
 This is my submission for the Capital One January 2020 Software Engineering Summit. 
 Link to deployed website: http://jeopardychallenge.herokuapp.com/
